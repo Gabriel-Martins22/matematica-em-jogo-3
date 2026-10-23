@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Alex na Cidade — Matemática em Jogo</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --accent:#00e0ff;--accent-2:#ff2e88;--accent-3:#ffe14d;
+  --good:#22e39a;--bad:#ff4d6d;--text:#e8eefc;--muted:#8a94b8;
+  --font-display:'Orbitron',sans-serif;--font-body:'Inter',sans-serif;
+}
+html,body{height:100%;overflow:hidden;background:#05070f;color:var(--text);font-family:var(--font-body);}
+#game{position:relative;width:100vw;height:100vh;overflow:hidden;display:flex;flex-direction:column;}
+
+/* HUD */
+#hud{display:flex;justify-content:space-between;align-items:center;padding:10px 18px;background:linear-gradient(180deg,rgba(10,14,30,.95),rgba(10,14,30,.7));border-bottom:1px solid rgba(0,224,255,.2);z-index:10;font-family:var(--font-display);font-size:12px;letter-spacing:1.5px;flex-wrap:wrap;gap:10px;}
+#hud .group{display:flex;gap:18px;align-items:center;}
+#hud .item{display:flex;flex-direction:column;gap:2px;}
+#hud .label{font-size:9px;color:var(--muted);letter-spacing:2px;}
+#hud .value{font-size:15px;font-weight:700;color:var(--accent);}
+#hud .value.score{color:var(--accent-3);}
+#hud .value.clues{color:var(--accent-2);}
+#hud .btn-mini{background:transparent;border:1px solid rgba(255,255,255,.2);color:var(--text);padding:5px 11px;border-radius:6px;font-family:var(--font-display);font-size:10px;letter-spacing:1px;cursor:pointer;transition:all .2s;}
+#hud .btn-mini:hover{border-color:var(--accent);color:var(--accent);}
+
+/* Canvas */
+#canvas-wrap{flex:1;position:relative;overflow:hidden;background:#0a0e1e;}
+#gameCanvas{display:block;width:100%;height:100%;}
+#controls-hint{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.7);padding:8px 18px;border-radius:99px;font-size:11px;letter-spacing:1px;color:var(--accent);font-family:var(--font-display);pointer-events:none;border:1px solid rgba(0,224,255,.3);white-space:nowrap;max-width:95vw;overflow:hidden;}
+#mission-hint{position:absolute;top:14px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#ffe14d,#ff9f40);color:#001018;padding:8px 20px;border-radius:99px;font-family:var(--font-display);font-size:12px;font-weight:700;letter-spacing:1px;box-shadow:0 4px 20px rgba(255,225,77,.4);pointer-events:none;display:none;max-width:90vw;text-align:center;}
+#interact-hint{position:absolute;top:50%;left:50%;transform:translate(-50%,-140px);background:#ffe14d;color:#001018;padding:10px 20px;border-radius:12px;font-family:var(--font-display);font-size:13px;font-weight:700;letter-spacing:1px;animation:pulse 1s infinite;pointer-events:none;display:none;box-shadow:0 8px 30px rgba(255,225,77,.5);}
+@keyframes pulse{0%,100%{transform:translate(-50%,-140px) scale(1);}50%{transform:translate(-50%,-140px) scale(1.08);}}
+
+/* Minimapa */
+#minimap{position:absolute;top:70px;right:14px;width:140px;height:140px;border-radius:50%;border:2px solid rgba(0,224,255,.5);background:rgba(10,14,30,.85);box-shadow:0 0 20px rgba(0,224,255,.3);z-index:5;overflow:hidden;}
+
+/* Screens */
+.screen{position:absolute;inset:0;display:none;align-items:center;justify-content:center;padding:20px;z-index:50;background:rgba(5,7,15,.88);backdrop-filter:blur(8px);overflow-y:auto;}
+.screen.active{display:flex;animation:fadeIn .35s ease;}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+.card{max-width:780px;width:100%;padding:32px;background:linear-gradient(160deg,rgba(18,24,48,.97),rgba(10,14,30,.99));border:1px solid rgba(0,224,255,.25);border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.7);animation:fadeIn .4s ease;}
+.card .tag{display:inline-block;padding:5px 14px;background:var(--accent);color:#001018;font-family:var(--font-display);font-size:10px;font-weight:700;letter-spacing:2px;border-radius:99px;margin-bottom:14px;}
+.card .tag.pink{background:var(--accent-2);}
+.card .tag.yellow{background:var(--accent-3);}
+.card h2{font-family:var(--font-display);font-size:clamp(20px,3vw,26px);margin-bottom:14px;line-height:1.2;}
+.card p{font-size:14px;line-height:1.7;color:#c5cee8;margin-bottom:14px;}
+.card .meta{font-size:11px;color:var(--muted);margin-bottom:14px;letter-spacing:2px;font-family:var(--font-display);}
+
+.title-screen{max-width:800px;width:100%;text-align:center;padding:40px 24px;}
+.title-screen h1{font-family:var(--font-display);font-weight:900;font-size:clamp(24px,5vw,44px);line-height:1.1;letter-spacing:2px;margin-bottom:14px;}
+.title-screen h1 .amp{color:var(--accent-2);}
+.title-screen .sub{font-size:14px;color:var(--muted);margin-bottom:24px;}
+.title-screen .hero-icons{font-size:36px;letter-spacing:12px;margin-bottom:20px;}
+.title-screen .meta{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:24px;font-size:11px;color:var(--muted);}
+.title-screen .meta span{padding:6px 12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;}
+
+.btn{font-family:var(--font-display);font-weight:700;letter-spacing:2px;font-size:13px;padding:14px 26px;border:none;border-radius:10px;cursor:pointer;transition:all .2s;text-transform:uppercase;}
+.btn.primary{background:linear-gradient(135deg,var(--accent),#008cff);color:#001018;box-shadow:0 0 24px rgba(0,224,255,.4);}
+.btn.primary:hover{transform:translateY(-2px);box-shadow:0 0 36px rgba(0,224,255,.7);}
+.btn.ghost{background:transparent;border:1px solid rgba(255,255,255,.2);color:var(--text);}
+.btn.ghost:hover{border-color:var(--accent);color:var(--accent);}
+
+.opt{display:block;width:100%;text-align:left;padding:14px 18px;margin-bottom:10px;background:rgba(255,255,255,.04);border:2px solid rgba(255,255,255,.1);border-radius:10px;color:var(--text);font-size:14px;cursor:pointer;transition:all .2s;font-family:var(--font-body);line-height:1.5;}
+.opt:hover{border-color:var(--accent);background:rgba(0,224,255,.08);transform:translateX(4px);}
+.opt.selected{border-color:var(--accent);background:rgba(0,224,255,.12);}
+.opt.correct{border-color:var(--good);background:rgba(34,227,154,.12);color:var(--good);cursor:default;}
+.opt.wrong{border-color:var(--bad);background:rgba(255,77,109,.12);color:var(--bad);cursor:default;}
+.opt.locked{cursor:not-allowed;pointer-events:none;}
+
+.feedback{padding:14px 18px;border-radius:10px;font-size:13px;line-height:1.6;margin:14px 0;}
+.feedback.correct{background:rgba(34,227,154,.1);border-left:4px solid var(--good);color:#b8f5d8;}
+.feedback.wrong{background:rgba(255,77,109,.1);border-left:4px solid var(--bad);color:#ffc2cf;}
+
+.dec-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-top:8px;}
+.dec-card{padding:22px;background:rgba(255,255,255,.03);border:2px solid rgba(255,255,255,.1);border-radius:14px;cursor:pointer;transition:all .25s;}
+.dec-card:hover{border-color:var(--accent);transform:translateY(-3px);box-shadow:0 12px 30px rgba(0,224,255,.15);}
+.dec-card h3{font-family:var(--font-display);font-size:15px;color:var(--accent);margin-bottom:8px;}
+.dec-card p{font-size:13px;line-height:1.5;color:var(--muted);margin-bottom:8px;}
+.dec-card .tag-small{display:inline-block;padding:3px 9px;background:rgba(255,225,77,.15);color:var(--accent-3);font-size:10px;font-family:var(--font-display);letter-spacing:1px;border-radius:5px;}
+
+.hidden{display:none !important;}
+
+@media(max-width:600px){
+  #hud{padding:8px 10px;font-size:10px;}
+  #hud .value{font-size:13px;}
+  #hud .group{gap:10px;}
+  .card{padding:22px;}
+  #minimap{width:100px;height:100px;top:60px;right:8px;}
+  #controls-hint{font-size:9px;padding:6px 10px;}
+}
+</style>
+</head>
+<body>
+<div id="game">
+
+  <header id="hud">
+    <div class="group">
+      <div class="item"><span class="label">CAPÍTULO</span><span id="hud-cap" class="value">1</span></div>
+      <div class="item"><span class="label">DESAFIO</span><span id="hud-chal" class="value">0/15</span></div>
+    </div>
+    <div class="group">
+      <div class="item"><span class="label">PONTOS</span><span id="hud-score" class="value score">0</span></div>
+      <div class="item"><span class="label">PISTAS</span><span id="hud-clues" class="value clues">0/3</span></div>
+      <button id="btn-help" class="btn-mini">?</button>
+    </div>
+  </header>
+
+  <div id="canvas-wrap">
+    <canvas id="gameCanvas"></canvas>
+    <canvas id="minimap"></canvas>
+    <div id="controls-hint">← → ↑ ↓ MOVER &nbsp;·&nbsp; E INTERAGIR</div>
+    <div id="mission-hint"></div>
+    <div id="interact-hint">E PARA INTERAGIR</div>
+  </div>
+
+  <section id="scr-title" class="screen active">
+    <div class="title-screen">
+      <div class="hero-icons">🏙️ 🚗 📐</div>
+      <h1>ALEX NA CIDADE<br><span class="amp">Matemática em Jogo 2.0</span></h1>
+      <p class="sub">Explore a cidade, resolva desafios, reforme a escola — visão top-down com carro</p>
+      <div class="meta">
+        <span>🎮 Setas para dirigir/andar</span>
+        <span>📐 15 desafios</span>
+        <span>🚪 2 decisões</span>
+        <span>🏁 2 finais</span>
+      </div>
+      <button id="btn-start" class="btn primary">▶ COMEÇAR AVENTURA</button>
+    </div>
+  </section>
+
+  <section id="scr-story" class="screen">
+    <div class="card">
+      <div class="tag" id="st-tag">CAPÍTULO 1</div>
+      <h2 id="st-title"></h2>
+      <p id="st-text"></p>
+      <div class="feedback correct" id="st-extra" style="margin-bottom:18px;"></div>
+      <button id="btn-story" class="btn primary">CONTINUAR →</button>
+    </div>
+  </section>
+
+  <section id="scr-challenge" class="screen">
+    <div class="card">
+      <div class="meta"><span id="ch-num">DESAFIO 01</span> · <span id="ch-fmt">Formato</span></div>
+      <div class="tag yellow" id="ch-chap">CAPÍTULO 1</div>
+      <h2 id="ch-q" style="font-size:17px;line-height:1.5;"></h2>
+      <div id="ch-opts" style="margin-top:16px;"></div>
+      <div id="ch-fb" class="feedback hidden"></div>
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px;">
+        <button id="btn-answer" class="btn primary" disabled>CONFIRMAR</button>
+        <button id="btn-next" class="btn primary hidden">CONTINUAR →</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="scr-decision" class="screen">
+    <div class="card">
+      <div class="tag pink">PONTO DE DECISÃO</div>
+      <h2 id="dc-title"></h2>
+      <p id="dc-text"></p>
+      <div class="dec-grid" id="dc-opts"></div>
+    </div>
+  </section>
+
+  <section id="scr-end" class="screen">
+    <div class="card" style="text-align:center;">
+      <div class="tag" id="end-tag"></div>
+      <h2 id="end-title"></h2>
+      <p id="end-text"></p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin:22px 0;" id="end-stats"></div>
+      <button id="btn-replay" class="btn primary">JOGAR NOVAMENTE</button>
+    </div>
+  </section>
+
+  <section id="scr-help" class="screen">
+    <div class="card">
+      <div class="tag yellow">COMO JOGAR</div>
+      <h2>Controles e Objetivo</h2>
+      <ul style="padding-left:20px;color:#c5cee8;line-height:1.9;font-size:14px;">
+        <li><b>← → ↑ ↓</b> — Dirigir o carro / mover o Alex a pé</li>
+        <li><b>E</b> — Entrar/sair do carro · Interagir</li>
+        <li>Vá até os <b>ícones brilhantes</b> para abrir desafios</li>
+        <li>Acerte para ganhar <b>pontos e pistas</b></li>
+        <li>Siga as <b>setas no chão</b> para a missão atual</li>
+        <li>Há <b>2 decisões</b> que mudam a história</li>
+        <li>Desempenho <b>≥ 80%</b> = melhor final</li>
+      </ul>
+      <button id="btn-close-help" class="btn primary" style="margin-top:16px;">ENTENDI</button>
+    </div>
+  </section>
+
+</div>
+
+<script>
+/* ========================================================
+   MOTOR DO JOGO — Top-down GTA-style
+   ======================================================== */
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const minimapCanvas = document.getElementById('minimap');
+const mmCtx = minimapCanvas.getContext('2d');
+let CW=0, CH=0, DPR = Math.min(2, window.devicePixelRatio||1);
+
+function resizeCanvas(){
+  const r = canvas.parentElement.getBoundingClientRect();
+  CW = r.width; CH = r.height;
+  canvas.width = CW*DPR; canvas.height = CH*DPR;
+  canvas.style.width = CW+'px'; canvas.style.height = CH+'px';
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  minimapCanvas.width = 140*DPR; minimapCanvas.height = 140*DPR;
+  minimapCanvas.style.width = '140px'; minimapCanvas.style.height = '140px';
+  mmCtx.setTransform(DPR,0,0,DPR,0,0);
+}
+window.addEventListener('resize', resizeCanvas);
+
+/* ---------- Input ---------- */
+const keys = {left:false,right:false,up:false,down:false,interact:false,interactOnce:false};
+window.addEventListener('keydown', e=>{
+  if(e.key==='ArrowLeft'||e.key==='a'||e.key==='A'){keys.left=true;e.preventDefault();}
+  if(e.key==='ArrowRight'||e.key==='d'||e.key==='D'){keys.right=true;e.preventDefault();}
+  if(e.key==='ArrowUp'||e.key==='w'||e.key==='W'){keys.up=true;e.preventDefault();}
+  if(e.key==='ArrowDown'||e.key==='s'||e.key==='S'){keys.down=true;e.preventDefault();}
+  if(e.key==='e'||e.key==='E'){ if(!keys.interact) keys.interactOnce=true; keys.interact=true; }
+});
+window.addEventListener('keyup', e=>{
+  if(e.key==='ArrowLeft'||e.key==='a'||e.key==='A')keys.left=false;
+  if(e.key==='ArrowRight'||e.key==='d'||e.key==='D')keys.right=false;
+  if(e.key==='ArrowUp'||e.key==='w'||e.key==='W')keys.up=false;
+  if(e.key==='ArrowDown'||e.key==='s'||e.key==='S')keys.down=false;
+  if(e.key==='e'||e.key==='E')keys.interact=false;
+});
+
+/* ---------- Estado global ---------- */
+const G = {
+  state:'title', cap:1, phase:0,
+  score:0, correct:0, done:0, total:15, clues:0,
+  decisions:{patio:null, method:null},
+  hintTimer:0,
+};
+
+/* ---------- Mundo / cidade ---------- */
+const WORLD = {w:3600, h:3600};
+
+// Prédios (retângulos) - gerados
+let buildings = [];
+// Ruas (retângulos) - layout em cruz + anel
+let roads = [];
+// Alvos (missões): {x,y,type,id,label,triggered,walkable}
+let targets = [];
+// Decorações (árvores, postes, calçadas)
+let deco = [];
+// Carro do jogador
+let car = null;
+// Alex a pé
+const alex = {x:0,y:0,r:14,speed:170,angle:0,inCar:true,walkFrame:0};
+// Partículas
+let particles = [];
+
+/* ---------- Gerar cidade ---------- */
+function generateCity(){
+  buildings = []; roads = []; deco = []; targets = [];
+
+  // Ruas principais (layout em cruz + anel)
+  const roadW = 160;
+  // Ruas verticais
+  roads.push({x:600, y:0, w:roadW, h:WORLD.h});
+  roads.push({x:1800, y:0, w:roadW, h:WORLD.h});
+  roads.push({x:3000, y:0, w:roadW, h:WORLD.h});
+  // Ruas horizontais
+  roads.push({x:0, y:600, w:WORLD.w, h:roadW});
+  roads.push({x:0, y:1800, w:WORLD.w, h:roadW});
+  roads.push({x:0, y:3000, w:WORLD.w, h:roadW});
+
+  // Gerar prédios nos quarteirões
+  const blocks = [];
+  // Definir quarteirões entre ruas
+  const xs = [0, 600+roadW, 1800+roadW, 3000+roadW];
+  const ys = [0, 600+roadW, 1800+roadW, 3000+roadW];
+  const xsEnd = [600, 1800, 3000, WORLD.w];
+  const ysEnd = [600, 1800, 3000, WORLD.h];
+
+  for(let bi=0; bi<4; bi++){
+    for(let bj=0; bj<4; bj++){
+      const bx0 = xs[bi], bx1 = xsEnd[bi];
+      const by0 = ys[bj], by1 = ysEnd[bj];
+      if(bx1 - bx0 < 100 || by1 - by0 < 100) continue;
+      blocks.push({x:bx0, y:by0, w:bx1-bx0, h:by1-by0});
+    }
+  }
+
+  // Em cada bloco, gerar 1-3 prédios
+  blocks.forEach((b, idx)=>{
+    const nBuildings = 1 + Math.floor(Math.random()*3);
+    const colors = [
+      ['#2a3a5c','#1a2238'],
+      ['#3a2a4c','#221430'],
+      ['#1a3c2a','#0f2018'],
+      ['#4a3a2c','#2a1e14'],
+      ['#2c3a4a','#1a2028'],
+      ['#4a2a3a','#2a1420'],
+    ];
+    for(let i=0;i<nBuildings;i++){
+      const pw = 100 + Math.random()*140;
+      const ph = 100 + Math.random()*140;
+      const px = b.x + 20 + Math.random()*(b.w - pw - 40);
+      const py = b.y + 20 + Math.random()*(b.h - ph - 40);
+      if(px < b.x + 10 || py < b.y + 10 || px+pw > b.x+b.w-10 || py+ph > b.y+b.h-10) continue;
+      const color = colors[Math.floor(Math.random()*colors.length)];
+      buildings.push({x:px, y:py, w:pw, h:ph, color, roofY: Math.random()*8+4, windows: Math.random()>0.5});
+
+      // árvore ou poste em volta
+      if(Math.random() > 0.5){
+        deco.push({type:'tree', x:px + pw + 20 + Math.random()*30, y:py + Math.random()*ph, r:12+Math.random()*8});
+      }
+    }
+    // calçada ao redor
+    deco.push({type:'sidewalk', x:b.x, y:b.y, w:b.w, h:b.h});
+  });
+
+  // Alvos / missões espalhados
+  const targetPositions = [
+    {x:900,y:400,type:'npc',id:1,label:'Gabarito de Vértices'},
+    {x:2400,y:400,type:'npc',id:2,label:'Engenheiro'},
+    {x:1200,y:1200,type:'npc',id:3,label:'Planta do Pátio'},
+    {x:2700,y:1400,type:'npc',id:4,label:'Caderno'},
+    {x:1500,y:2400,type:'npc',id:5,label:'Fornecedor'},
+    {x:3300,y:900,type:'door',id:1,label:'Decisão do Pátio'},
+    {x:900,y:2400,type:'npc',id:6,label:'Esquadro'},
+    {x:2100,y:2400,type:'npc',id:7,label:'Estagiário'},
+    {x:3000,y:2400,type:'npc',id:8,label:'Reservatório'},
+    {x:900,y:3200,type:'npc',id:9,label:'Scanner 3D'},
+    {x:2100,y:3200,type:'npc',id:10,label:'Mestre de Obras'},
+    {x:3300,y:3200,type:'npc',id:11,label:'Laranja Mágica'},
+    {x:2400,y:600,type:'door',id:2,label:'Decisão do Método'},
+    {x:1200,y:1800,type:'npc',id:12,label:'Conselheiro 1'},
+    {x:2400,y:1800,type:'npc',id:13,label:'Conselheiro 2'},
+    {x:3300,y:1800,type:'npc',id:14,label:'Conselheiro 3'},
+    {x:1500,y:900,type:'npc',id:15,label:'Conselheiro 4'},
+    {x:300,y:3300,type:'flag',id:'flag',label:'Fim'},
+  ];
+  targetPositions.forEach(t=>{
+    targets.push({...t, r:24, triggered:false, bob:Math.random()*Math.PI*2});
+  });
+
+  // Carro
+  car = {x:900,y:900,angle:0,speed:0,maxSpeed:340,accel:420,brake:600,steer:2.6,w:52,h:28};
+
+  alex.x = car.x; alex.y = car.y; alex.inCar = true;
+}
+
+/* ---------- Física do carro ---------- */
+function updateCar(dt){
+  // Acelerar/frear
+  const throttle = (keys.up?1:0) - (keys.down?1:0);
+  if(throttle > 0) car.speed += car.accel*dt;
+  else if(throttle < 0) car.speed -= car.brake*dt;
+  else car.speed *= Math.pow(0.3, dt); // atrito
+
+  // Limite
+  const maxSp = car.maxSpeed;
+  car.speed = Math.max(-maxSp*0.5, Math.min(maxSp, car.speed));
+
+  // Esterço
+  const steering = (keys.right?1:0) - (keys.left?1:0);
+  if(Math.abs(car.speed) > 10){
+    car.angle += steering * car.steer * dt * Math.min(1, Math.abs(car.speed)/150) * (car.speed>0?1:-1);
+  }
+
+  // Mover
+  const nx = car.x + Math.cos(car.angle) * car.speed * dt;
+  const ny = car.y + Math.sin(car.angle) * car.speed * dt;
+
+  if(!collidesWithBuilding(nx, car.y, car.w, car.h)) car.x = nx; else car.speed *= 0.3;
+  if(!collidesWithBuilding(car.x, ny, car.w, car.h)) car.y = ny; else car.speed *= 0.3;
+
+  // Limites do mundo
+  car.x = Math.max(20, Math.min(WORLD.w-20, car.x));
+  car.y = Math.max(20, Math.min(WORLD.h-20, car.y));
+
+  alex.x = car.x; alex.y = car.y;
+}
+
+/* ---------- Alex a pé ---------- */
+function updateAlex(dt){
+  let dx=0, dy=0;
+  if(keys.left) dx-=1;
+  if(keys.right) dx+=1;
+  if(keys.up) dy-=1;
+  if(keys.down) dy+=1;
+  const len = Math.hypot(dx,dy);
+  if(len>0){ dx/=len; dy/=len; alex.angle = Math.atan2(dy,dx); alex.walkFrame += dt*10; }
+  const nx = alex.x + dx*alex.speed*dt;
+  const ny = alex.y + dy*alex.speed*dt;
+  if(!collidesWithBuilding(nx, alex.y, alex.r*2, alex.r*2)) alex.x = nx;
+  if(!collidesWithBuilding(alex.x, ny, alex.r*2, alex.r*2)) alex.y = ny;
+  alex.x = Math.max(20, Math.min(WORLD.w-20, alex.x));
+  alex.y = Math.max(20, Math.min(WORLD.h-20, alex.y));
+}
+
+function collidesWithBuilding(x, y, w, h){
+  const left = x-w/2, top = y-h/2, right = x+w/2, bottom = y+h/2;
+  for(const b of buildings){
+    if(left < b.x+b.w && right > b.x && top < b.y+b.h && bottom > b.y) return true;
+  }
+  return false;
+}
+
+/* ---------- Update geral ---------- */
+let cam = {x:0,y:0,zoom:1.3};
+function update(dt){
+  if(G.state !== 'play') return;
+
+  if(alex.inCar) updateCar(dt);
+  else updateAlex(dt);
+
+  // Interagir (E)
+  if(keys.interactOnce){
+    keys.interactOnce = false;
+    tryInteract();
+  }
+
+  // Alvo próximo
+  updateActiveTarget();
+
+  // Câmera
+  const targetCamX = (alex.x) - CW/(2*cam.zoom);
+  const targetCamY = (alex.y) - CH/(2*cam.zoom);
+  cam.x += (targetCamX - cam.x) * 0.12;
+  cam.y += (targetCamY - cam.y) * 0.12;
+  // Zoom dinâmico: se no carro, mais rápido → zoom out leve
+  const targetZoom = alex.inCar ? Math.max(0.9, 1.3 - Math.abs(car.speed)/600) : 1.5;
+  cam.zoom += (targetZoom - cam.zoom) * 0.05;
+
+  // Partículas
+  for(let i=particles.length-1;i>=0;i--){
+    const p = particles[i];
+    p.x += p.vx*dt; p.y += p.vy*dt;
+    p.life -= dt;
+    if(p.life <= 0) particles.splice(i,1);
+  }
+
+  // Hint timer
+  if(G.hintTimer > 0){ G.hintTimer -= dt; if(G.hintTimer <= 0) document.getElementById('interact-hint').style.display='none'; }
+
+  // Bobbing targets
+  targets.forEach(t=>{ if(!t.triggered) t.bob += dt*3; });
+}
+
+/* ---------- Interações ---------- */
+let activeTarget = null;
+function updateActiveTarget(){
+  activeTarget = null;
+  let best = Infinity;
+  targets.forEach(t=>{
+    if(t.triggered) return;
+    const d = Math.hypot(t.x - alex.x, t.y - alex.y);
+    if(d < 80 && d < best){ best = d; activeTarget = t; }
+  });
+  const hint = document.getElementById('interact-hint');
+  if(activeTarget){
+    hint.style.display = 'block';
+    hint.textContent = 'E — ' + (activeTarget.type==='flag' ? '🏁 Concluir fase' : activeTarget.type==='door' ? '🚪 Decidir' : '🎯 ' + activeTarget.label);
+  } else {
+    hint.style.display = 'none';
+  }
+}
+
+function tryInteract(){
+  // Entrar/sair do carro
+  if(Math.hypot(alex.x-car.x, alex.y-car.y) < 60){
+    if(alex.inCar){
+      alex.inCar = false;
+      alex.x = car.x + 40; alex.y = car.y + 20;
+    } else {
+      alex.inCar = true;
+    }
+    return;
+  }
+  if(activeTarget){
+    if(activeTarget.type === 'flag'){
+      activeTarget.triggered = true;
+      finishLevel();
+    } else if(activeTarget.type === 'door'){
+      openDecision(activeTarget.id, activeTarget);
+    } else if(activeTarget.type === 'npc'){
+      openChallenge(activeTarget.id, activeTarget);
+    }
+  }
+}
+
+/* ---------- Render ---------- */
+function render(){
+  if(G.state === 'title' || G.state === 'end'){
+    drawTitleBg();
+    return;
+  }
+
+  // Fundo base
+  ctx.fillStyle = '#0f1420';
+  ctx.fillRect(0,0,CW,CH);
+
+  // Salvar e aplicar câmera
+  ctx.save();
+  ctx.scale(cam.zoom, cam.zoom);
+  ctx.translate(-cam.x, -cam.y);
+
+  // Asfalto base
+  ctx.fillStyle = '#22262e';
+  ctx.fillRect(0,0,WORLD.w,WORLD.h);
+
+  // Desenhar quarteirões (asfalto escuro = "chão")
+  // Já temos o cinza base — vamos desenhar as calçadas e ruas
+
+  // Ruas
+  roads.forEach(r=>{
+    ctx.fillStyle = '#1a1d24';
+    ctx.fillRect(r.x, r.y, r.w, r.h);
+    // faixa central
+    ctx.strokeStyle = '#3a3d44';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([24,24]);
+    if(r.w > r.h){
+      ctx.beginPath(); ctx.moveTo(r.x, r.y+r.h/2); ctx.lineTo(r.x+r.w, r.y+r.h/2); ctx.stroke();
+    } else {
+      ctx.beginPath(); ctx.moveTo(r.x+r.w/2, r.y); ctx.lineTo(r.x+r.w/2, r.y+r.h); ctx.stroke();
+    }
+    ctx.setLineDash([]);
+  });
+
+  // Calçadas
+  deco.filter(d=>d.type==='sidewalk').forEach(s=>{
+    ctx.strokeStyle = '#3a4050';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(s.x+2, s.y+2, s.w-4, s.h-4);
+  });
+
+  // Setas no chão apontando para o alvo atual
+  drawDirectionArrows();
+
+  // Alvos
+  targets.forEach(t=>{
+    if(t.triggered) return;
+    drawTarget(t);
+  });
+
+  // Árvores
+  deco.filter(d=>d.type==='tree').forEach(d=>drawTree(d));
+
+  // Prédios
+  buildings.forEach(b=>drawBuilding(b));
+
+  // Carro
+  if(alex.inCar) drawCar(car);
+
+  // Alex a pé
+  if(!alex.inCar) drawAlex(alex);
+
+  // Partículas
+  particles.forEach(p=>{
+    ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  });
+
+  ctx.restore();
+
+  // Vinheta
+  const vg = ctx.createRadialGradient(CW/2,CH/2, Math.min(CW,CH)*0.4, CW/2,CH/2, Math.max(CW,CH)*0.9);
+  vg.addColorStop(0,'rgba(0,0,0,0)');
+  vg.addColorStop(1,'rgba(0,0,0,0.65)');
+  ctx.fillStyle = vg;
+  ctx.fillRect(0,0,CW,CH);
+
+  // Minimapa
+  drawMinimap();
+}
+
+/* ---------- Desenhos ---------- */
+function drawBuilding(b){
+  // Sombra
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.fillRect(b.x+6, b.y+6, b.w, b.h);
+  // Base
+  const g = ctx.createLinearGradient(b.x, b.y, b.x, b.y+b.h);
+  g.addColorStop(0, b.color[0]);
+  g.addColorStop(1, b.color[1]);
+  ctx.fillStyle = g;
+  ctx.fillRect(b.x, b.y, b.w, b.h);
+  // Telhado highlight
+  ctx.fillStyle = 'rgba(255,255,255,0.08)';
+  ctx.fillRect(b.x+4, b.y+4, b.w-8, b.roofY);
+  // Contorno
+  ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(b.x, b.y, b.w, b.h);
+  // Janelas (grade)
+  if(b.windows){
+    const wx = b.w / 40;
+    const wy = b.h / 40;
+    for(let i=1;i<wx;i++){
+      for(let j=1;j<wy;j++){
+        const wxPos = b.x + (b.w/wx)*i;
+        const wyPos = b.y + (b.h/wy)*j;
+        const lit = Math.sin((i*13 + j*7)*0.5) > 0.2;
+        ctx.fillStyle = lit ? 'rgba(255,220,120,0.75)' : 'rgba(40,50,70,0.9)';
+        ctx.fillRect(wxPos-3, wyPos-4, 6, 8);
+      }
+    }
+  }
+}
+
+function drawTree(d){
+  ctx.fillStyle = 'rgba(0,0,0,0.4)';
+  ctx.beginPath(); ctx.arc(d.x+3, d.y+3, d.r, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#2a5a3a';
+  ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#4a8a5a';
+  ctx.beginPath(); ctx.arc(d.x-d.r*0.3, d.y-d.r*0.3, d.r*0.5, 0, Math.PI*2); ctx.fill();
+}
+
+function drawCar(c){
+  ctx.save();
+  ctx.translate(c.x, c.y);
+  ctx.rotate(c.angle);
+
+  // Sombra
+  ctx.fillStyle = 'rgba(0,0,0,0.4)';
+  ctx.beginPath();
+  ctx.roundRect(-c.w/2+3, -c.h/2+3, c.w, c.h, 6);
+  ctx.fill();
+
+  // Carroceria
+  const g = ctx.createLinearGradient(-c.w/2, 0, c.w/2, 0);
+  g.addColorStop(0, '#00c8e0');
+  g.addColorStop(0.5, '#00e0ff');
+  g.addColorStop(1, '#0090c8');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.roundRect(-c.w/2, -c.h/2, c.w, c.h, 8);
+  ctx.fill();
+
+  // Capô
+  ctx.fillStyle = 'rgba(0,0,0,0.15)';
+  ctx.fillRect(c.w/4, -c.h/2+3, c.w/4, c.h-6);
+
+  // Vidros
+  ctx.fillStyle = 'rgba(20,30,50,0.85)';
+  ctx.beginPath();
+  ctx.roundRect(-c.w*0.1, -c.h/2+4, c.w*0.35, c.h-8, 3);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.roundRect(-c.w/2+4, -c.h/2+4, c.w*0.25, c.h-8, 3);
+  ctx.fill();
+
+  // Faróis
+  ctx.fillStyle = '#ffe14d';
+  ctx.beginPath(); ctx.arc(c.w/2-4, -c.h/2+5, 3, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(c.w/2-4, c.h/2-5, 3, 0, Math.PI*2); ctx.fill();
+
+  // Luz dos faróis (cone)
+  const lightGrad = ctx.createRadialGradient(c.w/2, 0, 5, c.w/2, 0, 90);
+  lightGrad.addColorStop(0, 'rgba(255,225,77,0.35)');
+  lightGrad.addColorStop(1, 'rgba(255,225,77,0)');
+  ctx.fillStyle = lightGrad;
+  ctx.beginPath();
+  ctx.moveTo(c.w/2-2, -c.h/2+3);
+  ctx.lineTo(c.w/2+90, -40);
+  ctx.lineTo(c.w/2+90, 40);
+  ctx.lineTo(c.w/2-2, c.h/2-3);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function drawAlex(a){
+  ctx.save();
+  ctx.translate(a.x, a.y);
+
+  // sombra
+  ctx.fillStyle = 'rgba(0,0,0,0.4)';
+  ctx.beginPath(); ctx.arc(0, 4, a.r, 0, Math.PI*2); ctx.fill();
+
+  // corpo circular
+  const g = ctx.createRadialGradient(-4,-4,3,0,0,a.r);
+  g.addColorStop(0, '#00e0ff');
+  g.addColorStop(1, '#0080b8');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(0,0,a.r, 0, Math.PI*2); ctx.fill();
+
+  // cabeça
+  ctx.fillStyle = '#ffd6a5';
+  ctx.beginPath(); ctx.arc(0,-2, a.r*0.55, 0, Math.PI*2); ctx.fill();
+
+  // cabelo
+  ctx.fillStyle = '#2a1a10';
+  ctx.beginPath();
+  ctx.arc(0, -2, a.r*0.55, Math.PI, 0);
+  ctx.fill();
+
+  // olho na direção
+  const eye = a.r*0.35;
+  ctx.fillStyle = '#0a0e1e';
+  ctx.beginPath();
+  ctx.arc(Math.cos(a.angle)*eye, -2 + Math.sin(a.angle)*eye, 2.5, 0, Math.PI*2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function drawTarget(t){
+  const bob = Math.sin(t.bob) * 4;
+  const y = t.y + bob;
+
+  // Halo
+  const halo = 0.5 + Math.sin(t.bob*2)*0.3;
+  const grad = ctx.createRadialGradient(t.x, y, 0, t.x, y, 50);
+  grad.addColorStop(0, 'rgba(255,225,77,' + (0.4*halo) + ')');
+  grad.addColorStop(1, 'rgba(255,225,77,0)');
+  ctx.fillStyle = grad;
+  ctx.beginPath(); ctx.arc(t.x, y, 50, 0, Math.PI*2); ctx.fill();
+
+  // Sombra
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.beginPath(); ctx.ellipse(t.x, t.y+28, 20, 8, 0, 0, Math.PI*2); ctx.fill();
+
+  // Ícone
+  if(t.type === 'door'){
+    // Porta/casa
+    ctx.fillStyle = '#ff2e88';
+    ctx.fillRect(t.x-16, y-28, 32, 40);
+    ctx.fillStyle = '#ffe14d';
+    ctx.beginPath(); ctx.arc(t.x+8, y-8, 3, 0, Math.PI*2); ctx.fill();
+    // telhado
+    ctx.fillStyle = '#ffe14d';
+    ctx.beginPath();
+    ctx.moveTo(t.x-20, y-28);
+    ctx.lineTo(t.x, y-44);
+    ctx.lineTo(t.x+20, y-28);
+    ctx.closePath();
+    ctx.fill();
+    // "?" flutuante
+    ctx.fillStyle = '#ffe14d';
+    ctx.font = 'bold 20px Orbitron';
+    ctx.textAlign = 'center';
+    ctx.fillText('?', t.x, y-55);
+  } else if(t.type === 'flag'){
+    // bandeira
+    ctx.fillStyle = '#8a94b8';
+    ctx.fillRect(t.x-2, y-30, 4, 50);
+    ctx.fillStyle = '#22e39a';
+    ctx.beginPath();
+    ctx.moveTo(t.x+2, y-30);
+    ctx.lineTo(t.x+24, y-20);
+    ctx.lineTo(t.x+2, y-10);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#001018';
+    ctx.font = 'bold 12px Orbitron';
+    ctx.textAlign = 'center';
+    ctx.fillText('★', t.x+13, y-17);
+  } else {
+    // NPC — bolha com "!"
+    ctx.fillStyle = '#ffe14d';
+    ctx.beginPath(); ctx.arc(t.x, y-10, 16, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#001018';
+    ctx.font = 'bold 22px Orbitron';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('!', t.x, y-10);
+    ctx.textBaseline = 'alphabetic';
+  }
+  ctx.textAlign = 'left';
+}
+
+function drawDirectionArrows(){
+  // seta apontando para o próximo alvo não-triggered
+  const next = targets.find(t=>!t.triggered);
+  if(!next) return;
+  const dx = next.x - alex.x;
+  const dy = next.y - alex.y;
+  const dist = Math.hypot(dx,dy);
+  if(dist < 120) return;
+  const ang = Math.atan2(dy,dx);
+  ctx.save();
+  ctx.globalAlpha = 0.5 + Math.sin(performance.now()*0.005)*0.3;
+  ctx.translate(alex.x, alex.y);
+  for(let i=1;i<=3;i++){
+    const r = 40 + i*30;
+    ctx.save();
+    ctx.rotate(ang);
+    ctx.fillStyle = '#ffe14d';
+    ctx.beginPath();
+    ctx.moveTo(r+12, 0);
+    ctx.lineTo(r, -10);
+    ctx.lineTo(r, 10);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+function drawMinimap(){
+  mmCtx.clearRect(0,0,140,140);
+  const scale = 140 / Math.max(WORLD.w, WORLD.h);
+  // fundo
+  mmCtx.fillStyle = 'rgba(10,14,30,0.9)';
+  mmCtx.fillRect(0,0,140,140);
+  // prédios
+  mmCtx.fillStyle = 'rgba(60,80,120,0.6)';
+  buildings.forEach(b=>{
+    mmCtx.fillRect(b.x*scale, b.y*scale, Math.max(2,b.w*scale), Math.max(2,b.h*scale));
+  });
+  // alvos
+  targets.forEach(t=>{
+    if(t.triggered) return;
+    const color = t.type==='door' ? '#ff2e88' : t.type==='flag' ? '#22e39a' : '#ffe14d';
+    mmCtx.fillStyle = color;
+    mmCtx.beginPath();
+    mmCtx.arc(t.x*scale, t.y*scale, 3, 0, Math.PI*2);
+    mmCtx.fill();
+  });
+  // player
+  mmCtx.fillStyle = '#00e0ff';
+  mmCtx.beginPath();
+  mmCtx.arc(alex.x*scale, alex.y*scale, 4, 0, Math.PI*2);
+  mmCtx.fill();
+}
+
+function drawTitleBg(){
+  const t = performance.now()*0.001;
+  const g = ctx.createRadialGradient(CW/2, CH/2, 0, CW/2, CH/2, Math.max(CW,CH));
+  g.addColorStop(0,'#121830');
+  g.addColorStop(1,'#05070f');
+  ctx.fillStyle = g;
+  ctx.fillRect(0,0,CW,CH);
+  // grid de ruas fake
+  ctx.strokeStyle = 'rgba(0,224,255,0.05)';
+  ctx.lineWidth = 2;
+  const grid = 60;
+  const offset = (t*20) % grid;
+  for(let x=-grid;x<CW+grid;x+=grid){ ctx.beginPath(); ctx.moveTo(x+offset,0); ctx.lineTo(x+offset,CH); ctx.stroke(); }
+  for(let y=-grid;y<CH+grid;y+=grid){ ctx.beginPath(); ctx.moveTo(0,y+offset); ctx.lineTo(CW,y+offset); ctx.stroke(); }
+  // hexágonos flutuantes
+  for(let i=0;i<10;i++){
+    const a = t + i*0.6;
+    const x = CW/2 + Math.cos(a*0.7) * (CW*0.35);
+    const y = CH/2 + Math.sin(a) * (CH*0.35);
+    const sides = i%2===0?6:4;
+    const size = 30+i*4;
+    ctx.strokeStyle = i%2===0 ? 'rgba(0,224,255,0.18)' : 'rgba(255,46,136,0.18)';
+    ctx.lineWidth = 2;
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.rotate(a+i);
+    ctx.beginPath();
+    for(let j=0;j<sides;j++){
+      const ang = (j*Math.PI*2/sides) - Math.PI/2;
+      const px = Math.cos(ang)*size, py = Math.sin(ang)*size;
+      j===0?ctx.moveTo(px,py):ctx.lineTo(px,py);
+    }
+    ctx.closePath(); ctx.stroke();
+    ctx.restore();
+  }
+}
+
+/* roundRect polyfill */
+if(!CanvasRenderingContext2D.prototype.roundRect){
+  CanvasRenderingContext2D.prototype.roundRect = function(x,y,w,h,r){
+    if(typeof r==='number') r=[r,r,r,r];
+    this.beginPath();
+    this.moveTo(x+r[0],y);
+    this.arcTo(x+w,y,x+w,y+h,r[1]);
+    this.arcTo(x+w,y+h,x,y+h,r[2]);
+    this.arcTo(x,y+h,x,y,r[3]);
+    this.arcTo(x,y,x+w,y,r[0]);
+    this.closePath();
+    return this;
+  };
+}
+
+/* ========================================================
+   DESAFIOS
+   ======================================================== */
+const CHALLENGES = {
+  1:{cap:1,fmt:'Escolher resposta',q:'Alex encaixou 2 triângulos (60° cada) e 1 quadrado (90°) num vértice. Qual polígono fecha exatamente 360°?',
+    opts:[{t:'Pentágono (108°)',c:false},{t:'Hexágono (120°)',c:false},{t:'Dodecágono (150°)',c:true},{t:'Octógono (135°)',c:false}],
+    fbC:'✔ 60+60+90=210°. Faltam 150° → dodecágono (n=12).',fbW:'✘ Some: 60+60+90=210°. Faltam 150° → dodecágono.'},
+  2:{cap:1,fmt:'Estimar',q:'Pátio 100 m², peças 0,5×0,5 m, 5% de perda. Quantas comprar?',
+    opts:[{t:'400',c:false},{t:'420',c:true},{t:'450',c:false},{t:'500',c:false}],
+    fbC:'✔ Peça=0,25 m². 100/0,25=400. ×1,05=420.',fbW:'✘ 100÷0,25=400 peças. +5% = 420.'},
+  3:{cap:1,fmt:'Interpretar',q:'Quantos triângulos equiláteros fecham um vértice?',
+    opts:[{t:'4',c:false},{t:'5',c:false},{t:'6',c:true},{t:'8',c:false}],
+    fbC:'✔ 60° × 6 = 360°.',fbW:'✘ 360÷60=6.'},
+  4:{cap:1,fmt:'Algoritmo',q:'Ordem correta para verificar ladrilhamento?',
+    opts:[{t:'n → ângulo → soma → 360°',c:true},{t:'ângulo → n → soma → 360°',c:false},{t:'360° → soma → ângulo → n',c:false}],
+    fbC:'✔ Descobrir n, calcular ângulo, somar, conferir 360°.',fbW:'✘ Ordem: n → ângulo → soma → 360°.'},
+  5:{cap:1,fmt:'Associar',q:'O que IMPEDE ladrilhamento regular?',
+    opts:[{t:'Ângulo divisor de 360°',c:false},{t:'Pentágono regular (108°)',c:true},{t:'Soma=360°',c:false},{t:'Quadrados+octógonos',c:false}],
+    fbC:'✔ 360/108≈3,33. Deixa lacuna.',fbW:'✘ 360÷108 não inteiro.'},
+  6:{cap:2,fmt:'Cavalieri',q:'Prisma oblíquo: base 5×3 m, h=4 m. Volume?',
+    opts:[{t:'30 m³',c:false},{t:'60 m³',c:true},{t:'45 m³',c:false},{t:'Depende do ângulo',c:false}],
+    fbC:'✔ V=15×4=60 m³.',fbW:'✘ V=A_base×h=15×4=60.'},
+  7:{cap:2,fmt:'Corrigir erro',q:'"Mesmo volume + altura → secções iguais sempre." Erro?',
+    opts:[{t:'Não há erro',c:false},{t:'Assumir a recíproca',c:true},{t:'Altura não importa',c:false},{t:'Só vale em 2D',c:false}],
+    fbC:'✔ Cavalieri é direto: secções iguais → volumes iguais.',fbW:'✘ A recíproca não vale.'},
+  8:{cap:2,fmt:'Estimar',q:'Cilindro inclinado r=1 m, h=2 m. Litros? (π≈3,14)',
+    opts:[{t:'3.140 L',c:false},{t:'6.280 L',c:true},{t:'12.560 L',c:false},{t:'2.000 L',c:false}],
+    fbC:'✔ V=3,14×2=6,28 m³=6.280 L.',fbW:'✘ A=3,14; V=3,14×2=6,28 m³=6.280 L.'},
+  9:{cap:2,fmt:'Tabela',q:'Secções constantes = 2 m². Equivale a quê?',
+    opts:[{t:'Cone',c:false},{t:'Pirâmide',c:false},{t:'Prisma/cilindro base 2 m²',c:true},{t:'Esfera',c:false}],
+    fbC:'✔ Secção constante → prisma/cilindro.',fbW:'✘ Área constante = prisma/cilindro.'},
+  10:{cap:2,fmt:'Dados',q:'Para V de galpão inclinado basta: (1)geratriz (2)altura (3)área base (4)peso?',
+    opts:[{t:'Todos',c:false},{t:'(1)+(3)',c:false},{t:'(2)+(3)',c:true},{t:'(1)+(2)+(3)',c:false}],
+    fbC:'✔ V=A_base×h → só (2) e (3).',fbW:'✘ Precisa só de altura + área.'},
+  11:{cap:2,fmt:'Modelo',q:'Esfera é comparada a qual sólido em Cavalieri?',
+    opts:[{t:'Cubo',c:false},{t:'Cilindro − 2 cones',c:true},{t:'Pirâmide hex',c:false},{t:'2 paralelepípedos',c:false}],
+    fbC:'✔ Cilindro menos 2 cones.',fbW:'✘ Cilindro − 2 cones.'},
+  12:{cap:3,fmt:'Previsão',q:'Dobrar altura dobra o volume? Tem limite?',
+    opts:[{t:'Vale sempre',c:false},{t:'Só <45°',c:false},{t:'Sem limite, mantendo proporção',c:true},{t:'Só retos',c:false}],
+    fbC:'✔ V∝h em Cavalieri.',fbW:'✘ V é linear com h.'},
+  13:{cap:3,fmt:'Decisão',q:'Cortar 15% do custo. Melhor escolha?',
+    opts:[{t:'Misturar polígonos',c:false},{t:'Reduzir altura mantendo base',c:true},{t:'Deixar frestas',c:false},{t:'Usar geratriz',c:false}],
+    fbC:'✔ Reduzir altura = volume menor previsível.',fbW:'✘ Reduzir altura mantendo base.'},
+  14:{cap:3,fmt:'Evidências',q:'Marca X (pentágonos) ou Y (octógonos+quadrados)?',
+    opts:[{t:'X (bonita)',c:false},{t:'X (menos peças)',c:false},{t:'Y: 8.8.4 = 360°',c:true},{t:'Qualquer',c:false}],
+    fbC:'✔ Pentágono não fecha 360°.',fbW:'✘ Pentágono não ladrilha.'},
+  15:{cap:3,fmt:'Corrigir erro',q:'"Triângulo 3-4-5 × 5 = ladrilhamento regular." Erro?',
+    opts:[{t:'Triângulo não ladrilha',c:false},{t:'3-4-5 é escaleno, não regular',c:true},{t:'5 = 500°',c:false},{t:'Não é primo',c:false}],
+    fbC:'✔ Regular exige lados/ângulos iguais.',fbW:'✘ 3-4-5 é escaleno.'},
+};
+
+const STORY = {
+  1:{tag:'CAPÍTULO 1',title:'O Dilema do Pátio',text:'Alex, Monitor Júnior de Arquitetura, precisa reformar o pátio da escola. Dirija pela cidade, encontre os especialistas (pontos com "!"), aprenda sobre ladrilhamento e tome decisões.',extra:'🔑 Pista 1: Gabarito Geométrico de Vértices'},
+  2:{tag:'CAPÍTULO 2',title:'A Sala Torta',text:'Agora Alex precisa calcular o volume real da Sala de Memória, com paredes oblíquas. Use o Esquadro de Cavalieri e o Relatório de Sobras.',extra:'🔑 Pistas 2 e 3: Esquadro + Relatório'},
+  3:{tag:'CAPÍTULO 3',title:'Auditoria Final',text:'O Conselho Escolar exige provas. Resolva os desafios finais e chegue até a bandeira!',extra:'⚡ ≥80% = Final A'},
+};
+
+const DECISIONS = {
+  1:{title:'Escolha o Padrão do Pátio',text:'Cada escolha afeta a estética e a história.',
+    opts:[
+      {id:'hex',title:'Hexágonos Regulares',desc:'3×120°=360°. Econômico, simples.',tag:'REGULAR'},
+      {id:'oct',title:'Octógonos + Quadrados',desc:'135+135+90=360°. Mais bonito.',tag:'SEMIRREGULAR'}
+    ]},
+  2:{title:'Método de Medição',text:'Como calcular o volume da sala oblíqua?',
+    opts:[
+      {id:'cavalieri',title:'Princípio de Cavalieri',desc:'Rápido e elegante. Bônus.',tag:'RÁPIDO'},
+      {id:'decomposicao',title:'Decomposição Rígida',desc:'Tradicional, demorado.',tag:'TRADICIONAL'}
+    ]},
+};
+
+/* ========================================================
+   LÓGICA DE DESAFIO
+   ======================================================== */
+let currentChallengeId = null;
+let currentTarget = null;
+let selectedOpt = null;
+
+function openChallenge(id, target){
+  currentChallengeId = id;
+  currentTarget = target;
+  selectedOpt = null;
+  G.state = 'challenge';
+  const ch = CHALLENGES[id];
+  document.getElementById('ch-num').textContent = `DESAFIO ${String(id).padStart(2,'0')}`;
+  document.getElementById('ch-fmt').textContent = ch.fmt;
+  document.getElementById('ch-chap').textContent = `CAPÍTULO ${ch.cap}`;
+  document.getElementById('ch-q').textContent = ch.q;
+  const wrap = document.getElementById('ch-opts');
+  wrap.innerHTML = '';
+  ch.opts.forEach((o,i)=>{
+    const btn = document.createElement('button');
+    btn.className = 'opt';
+    btn.innerHTML = `<b>${String.fromCharCode(65+i)})</b> ${o.t}`;
+    btn.onclick = ()=>{
+      if(btn.classList.contains('locked')) return;
+      wrap.querySelectorAll('.opt').forEach(b=>b.classList.remove('selected'));
+      btn.classList.add('selected');
+      selectedOpt = i;
+      document.getElementById('btn-answer').disabled = false;
+    };
+    wrap.appendChild(btn);
+  });
+  const fb = document.getElementById('ch-fb');
+  fb.className = 'feedback hidden'; fb.textContent = '';
+  const btnA = document.getElementById('btn-answer');
+  const btnN = document.getElementById('btn-next');
+  btnA.classList.remove('hidden'); btnA.disabled = true;
+  btnN.classList.add('hidden');
+  btnA.onclick = submitChallenge;
+  btnN.onclick = closeChallenge;
+  showScreen('challenge');
+}
+
+function submitChallenge(){
+  if(selectedOpt === null) return;
+  const ch = CHALLENGES[currentChallengeId];
+  const chosen = ch.opts[selectedOpt];
+  const wrap = document.getElementById('ch-opts');
+  wrap.querySelectorAll('.opt').forEach((b,i)=>{
+    b.classList.add('locked');
+    if(ch.opts[i].c) b.classList.add('correct');
+    else if(i === selectedOpt && !chosen.c) b.classList.add('wrong');
+  });
+  const fb = document.getElementById('ch-fb');
+  if(chosen.c){
+    fb.className = 'feedback correct';
+    fb.innerHTML = `<b>${ch.fbC}</b>`;
+    G.score += 100; G.correct++;
+    if(currentChallengeId===1 || currentChallengeId===6 || currentChallengeId===11){
+      G.clues = Math.min(3, G.clues+1);
+    }
+    // partículas de sucesso
+    for(let i=0;i<20;i++){
+      particles.push({x:currentTarget.x, y:currentTarget.y, vx:(Math.random()-0.5)*200, vy:(Math.random()-0.5)*200, r:3+Math.random()*3, life:0.8, maxLife:0.8, color:'#22e39a'});
+    }
+  } else {
+    fb.className = 'feedback wrong';
+    fb.innerHTML = `<b>${ch.fbW}</b>`;
+  }
+  fb.classList.remove('hidden');
+  G.done = Math.min(G.total, G.done+1);
+  if(currentTarget) currentTarget.triggered = true;
+  updateHUD();
+  document.getElementById('btn-answer').classList.add('hidden');
+  document.getElementById('btn-next').classList.remove('hidden');
+}
+
+function closeChallenge(){
+  G.state = 'play';
+  showScreen(null);
+}
+
+/* Decisões */
+let currentDecisionId = null;
+let currentDecisionTarget = null;
+function openDecision(id, target){
+  currentDecisionId = id;
+  currentDecisionTarget = target;
+  G.state = 'decision';
+  const d = DECISIONS[id];
+  document.getElementById('dc-title').textContent = d.title;
+  document.getElementById('dc-text').textContent = d.text;
+  const wrap = document.getElementById('dc-opts');
+  wrap.innerHTML = '';
+  d.opts.forEach(o=>{
+    const card = document.createElement('div');
+    card.className = 'dec-card';
+    card.innerHTML = `<h3>${o.title}</h3><p>${o.desc}</p><span class="tag-small">${o.tag}</span>`;
+    card.onclick = ()=>chooseDecision(o.id);
+    wrap.appendChild(card);
+  });
+  showScreen('decision');
+}
+
+function chooseDecision(choiceId){
+  if(currentDecisionId === 1) G.decisions.patio = choiceId;
+  else G.decisions.method = choiceId;
+  if(currentDecisionTarget) currentDecisionTarget.triggered = true;
+  G.state = 'play';
+  showScreen(null);
+}
+
+/* ========================================================
+   TELAS
+   ======================================================== */
+function showScreen(name){
+  ['scr-title','scr-story','scr-challenge','scr-decision','scr-end','scr-help'].forEach(id=>{
+    document.getElementById(id).classList.remove('active');
+  });
+  if(name) document.getElementById('scr-'+name).classList.add('active');
+}
+
+function updateHUD(){
+  document.getElementById('hud-cap').textContent = G.cap;
+  document.getElementById('hud-chal').textContent = `${G.done}/${G.total}`;
+  document.getElementById('hud-score').textContent = G.score;
+  document.getElementById('hud-clues').textContent = `${G.clues}/3`;
+}
+
+function showStory(phase){
+  const s = STORY[phase];
+  document.getElementById('st-tag').textContent = s.tag;
+  document.getElementById('st-title').textContent = s.title;
+  document.getElementById('st-text').textContent = s.text;
+  document.getElementById('st-extra').textContent = s.extra;
+  showScreen('story');
+  G.state = 'story';
+  document.getElementById('btn-story').onclick = ()=>{
+    G.state = 'play';
+    showScreen(null);
+  };
+}
+
+function finishLevel(){
+  // Contar capítulo completado
+  G.cap++;
+  if(G.cap > 3){ showEnd(); return; }
+  // Resetar para nova fase (mantém mundo, mas marca novos alvos)
+  // Simplificação: reabrir todos os alvos para revisitar não faz sentido.
+  // Em vez disso: nova fase = novos desafios "desbloqueados".
+  // Como já temos todos no mundo, apenas continuamos.
+  showStory(G.cap);
+  updateHUD();
+}
+
+function showEnd(){
+  G.state = 'end';
+  const pct = Math.round((G.correct/G.total)*100);
+  const good = pct >= 80;
+  const tag = document.getElementById('end-tag');
+  if(good){
+    tag.className = 'tag yellow'; tag.textContent = 'FINAL A';
+    document.getElementById('end-title').textContent = '🏆 Obra Sustentável';
+    document.getElementById('end-text').textContent = `Com ${G.correct}/${G.total} acertos (${pct}%), Alex entrega o projeto perfeito. A escola economiza 25% da verba e o Conselho aplaude!`;
+  } else {
+    tag.className = 'tag pink'; tag.textContent = 'FINAL B';
+    document.getElementById('end-title').textContent = '⚠️ Retrabalho Estrutural';
+    document.getElementById('end-text').textContent = `Com ${G.correct}/${G.total} acertos (${pct}%), o pátio tem brechas e os armários não cabem. Alex precisa refazer parte da obra.`;
+  }
+  const dp = G.decisions.patio === 'hex' ? 'Hexágonos' : G.decisions.patio === 'oct' ? 'Octógonos+Quadrados' : '—';
+  const dm = G.decisions.method === 'cavalieri' ? 'Cavalieri' : G.decisions.method === 'decomposicao' ? 'Decomposição' : '—';
+  document.getElementById('end-stats').innerHTML = `
+    <div style="padding:14px;background:rgba(255,255,255,.03);border-radius:10px;"><div style="font-size:10px;color:#8a94b8;letter-spacing:2px;font-family:'Orbitron';">ACERTOS</div><div style="font-size:20px;color:#00e0ff;font-family:'Orbitron';font-weight:700;">${G.correct}/${G.total}</div></div>
+    <div style="padding:14px;background:rgba(255,255,255,.03);border-radius:10px;"><div style="font-size:10px;color:#8a94b8;letter-spacing:2px;font-family:'Orbitron';">%</div><div style="font-size:20px;color:#22e39a;font-family:'Orbitron';font-weight:700;">${pct}%</div></div>
+    <div style="padding:14px;background:rgba(255,255,255,.03);border-radius:10px;"><div style="font-size:10px;color:#8a94b8;letter-spacing:2px;font-family:'Orbitron';">PONTOS</div><div style="font-size:20px;color:#ffe14d;font-family:'Orbitron';font-weight:700;">${G.score}</div></div>
+    <div style="padding:14px;background:rgba(255,255,255,.03);border-radius:10px;"><div style="font-size:10px;color:#8a94b8;letter-spacing:2px;font-family:'Orbitron';">PADRÃO</div><div style="font-size:13px;font-family:'Orbitron';">${dp}</div></div>
+    <div style="padding:14px;background:rgba(255,255,255,.03);border-radius:10px;"><div style="font-size:10px;color:#8a94b8;letter-spacing:2px;font-family:'Orbitron';">MÉTODO</div><div style="font-size:13px;font-family:'Orbitron';">${dm}</div></div>
+  `;
+  showScreen('end');
+}
+
+/* ========================================================
+   BOOT
+   ======================================================== */
+document.getElementById('btn-start').onclick = ()=>{
+  G.score = 0; G.correct = 0; G.done = 0; G.clues = 0; G.cap = 1;
+  G.decisions = {patio:null, method:null};
+  generateCity();
+  showStory(1);
+  document.getElementById('hud').style.display = 'flex';
+  updateHUD();
+};
+
+document.getElementById('btn-help').onclick = ()=>{ G.state = 'paused'; showScreen('help'); };
+document.getElementById('btn-close-help').onclick = ()=>{ G.state = 'play'; showScreen(null); };
+document.getElementById('btn-replay').onclick = ()=>{
+  document.getElementById('hud').style.display = 'none';
+  showScreen('title');
+  G.state = 'title';
+};
+
+window.addEventListener('resize', resizeCanvas);
+
+/* Loop */
+let lastT = 0;
+function loop(t){
+  const dt = Math.min(0.05, (t - lastT)/1000 || 0.016);
+  lastT = t;
+  update(dt);
+  render();
+  requestAnimationFrame(loop);
+}
+
+setTimeout(()=>{
+  resizeCanvas();
+  generateCity();
+  G.state = 'title';
+  document.getElementById('hud').style.display = 'none';
+  requestAnimationFrame(loop);
+}, 100);
+
+</script>
+</body>
+</html>
